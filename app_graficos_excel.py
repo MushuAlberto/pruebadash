@@ -1,11 +1,10 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
 def detectar_columna_fecha(df):
-    # Buscar columnas que ya sean datetime
     date_cols = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
-    # Si no hay, intentar convertir columnas con nombres típicos
     if not date_cols:
         for col in df.columns:
             if any(word in col.lower() for word in ['fecha', 'date', 'día', 'dia']):
@@ -17,10 +16,16 @@ def detectar_columna_fecha(df):
                     pass
     return date_cols
 
+def detectar_columna_empresa(df):
+    for col in df.columns:
+        if any(word in col.lower() for word in ['empresa', 'compañía', 'compania', 'company', 'sociedad']):
+            return col
+    return None
+
 def main():
-    st.set_page_config(page_title="Dashboard por Fecha", layout="wide")
-    st.title("📊 Dashboard Dinámico por Fecha")
-    st.markdown("Carga tu archivo Excel, elige una fecha y explora los datos filtrados en los dashboards.")
+    st.set_page_config(page_title="Dashboard por Fecha y Empresa", layout="wide")
+    st.title("📊 Dashboard Dinámico por Fecha y Empresa")
+    st.markdown("Carga tu archivo Excel, elige una fecha y una o varias empresas para ver los dashboards filtrados.")
 
     st.sidebar.header("📁 Cargar Datos")
     uploaded_file = st.sidebar.file_uploader(
@@ -42,12 +47,9 @@ def main():
                 st.markdown("---")
                 st.header("📅 Selecciona una fecha para filtrar los datos")
                 date_col = st.selectbox("Columna de fecha", date_columns, key="main_date_col")
-                # Eliminar filas con fecha nula
                 df = df[df[date_col].notnull()]
-                # Mostrar rango de fechas
                 min_date = df[date_col].min().date()
                 max_date = df[date_col].max().date()
-                # Selector de fecha
                 selected_date = st.date_input(
                     "Selecciona la fecha",
                     min_value=min_date,
@@ -55,7 +57,6 @@ def main():
                     value=min_date,
                     key="main_date_input"
                 )
-                # Filtrar el DataFrame por la fecha seleccionada
                 filtered_df = df[df[date_col].dt.date == selected_date]
                 if filtered_df.empty:
                     st.warning("No hay datos para la fecha seleccionada. Por favor, elige otra fecha.")
@@ -63,6 +64,25 @@ def main():
             else:
                 st.info("No se detectó ninguna columna de fecha. Se mostrarán todos los datos.")
                 filtered_df = df.copy()
+
+            # Detectar columna de empresa
+            empresa_col = detectar_columna_empresa(filtered_df)
+            if empresa_col:
+                st.markdown("---")
+                st.header("🏢 Selecciona una o varias empresas")
+                empresas = filtered_df[empresa_col].dropna().unique().tolist()
+                empresas_seleccionadas = st.multiselect(
+                    "Empresas",
+                    options=empresas,
+                    default=empresas,
+                    key="empresas_multiselect"
+                )
+                filtered_df = filtered_df[filtered_df[empresa_col].isin(empresas_seleccionadas)]
+                if filtered_df.empty:
+                    st.warning("No hay datos para la(s) empresa(s) seleccionada(s).")
+                    return
+            else:
+                st.info("No se detectó ninguna columna de empresa. Se mostrarán todos los datos.")
 
             # Solo mostrar dashboards si hay datos filtrados
             if not filtered_df.empty:
@@ -73,10 +93,12 @@ def main():
                 st.markdown("---")
                 st.header("🎨 Dashboards y Gráficos")
 
-                tab1, tab2, tab3 = st.tabs([
+                tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     "📈 Líneas/Barras",
                     "🥧 Circular",
-                    "📊 Dispersión"
+                    "📊 Dispersión",
+                    "📉 Histograma",
+                    "🔥 Mapa de Calor"
                 ])
 
                 with tab1:
@@ -160,6 +182,68 @@ def main():
                         fig.update_layout(height=500)
                         st.plotly_chart(fig, use_container_width=True)
 
+                with tab4:
+                    st.subheader("Histograma")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        hist_column = st.selectbox("Columna", numeric_columns, key="hist_column")
+                        bins = st.slider("Número de bins", 10, 100, 30, key="hist_bins")
+                    with col2:
+                        hist_color_by = st.selectbox(
+                            "Separar por (opcional)",
+                            [None] + categorical_columns,
+                            key="hist_color"
+                        )
+                    hist_title = st.text_input("Título", f"Distribución de {hist_column}", key="hist_title")
+                    if st.button("Generar histograma", key="generate_hist"):
+                        fig = px.histogram(
+                            filtered_df,
+                            x=hist_column,
+                            color=hist_color_by,
+                            nbins=bins,
+                            title=hist_title
+                        )
+                        fig.update_layout(height=500)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                with tab5:
+                    st.subheader("Mapa de Calor (Correlaciones)")
+                    if len(numeric_columns) >= 2:
+                        selected_columns = st.multiselect(
+                            "Selecciona columnas numéricas",
+                            numeric_columns,
+                            default=numeric_columns[:5] if len(numeric_columns) >= 5 else numeric_columns,
+                            key="heatmap_columns"
+                        )
+                        if len(selected_columns) >= 2:
+                            if st.button("Generar mapa de calor", key="generate_heatmap"):
+                                correlation_matrix = filtered_df[selected_columns].corr()
+                                fig = px.imshow(
+                                    correlation_matrix,
+                                    title="Mapa de Calor - Correlaciones",
+                                    color_continuous_scale="RdBu_r",
+                                    aspect="auto"
+                                )
+                                fig.update_layout(height=500)
+                                st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.warning("Selecciona al menos 2 columnas numéricas")
+                    else:
+                        st.warning("Se necesitan al menos 2 columnas numéricas para crear un mapa de calor")
+
+                # Sección de estadísticas descriptivas
+                st.markdown("---")
+                st.header("📈 Estadísticas Descriptivas")
+                if st.checkbox("Mostrar estadísticas", key="show_stats"):
+                    st.subheader("Estadísticas de columnas numéricas")
+                    st.dataframe(filtered_df.describe(), use_container_width=True)
+                    if categorical_columns:
+                        st.subheader("Información de columnas categóricas")
+                        for idx, col in enumerate(categorical_columns[:3]):
+                            st.write(f"**{col}:**")
+                            value_counts = filtered_df[col].value_counts().head(10)
+                            st.bar_chart(value_counts, key=f"bar_chart_{idx}")
+
         except Exception as e:
             st.error(f"Error al procesar el archivo: {str(e)}")
             st.info("Asegúrate de que el archivo sea un Excel válido (.xlsx o .xls)")
@@ -169,6 +253,7 @@ def main():
         st.markdown("### 📋 Formato de datos esperado")
         example_data = {
             'Fecha': ['2024-01-01', '2024-01-02', '2024-01-03'],
+            'Empresa': ['Empresa A', 'Empresa B', 'Empresa A'],
             'Ventas': [1000, 1500, 1200],
             'Producto': ['A', 'B', 'A'],
             'Region': ['Norte', 'Sur', 'Norte']
