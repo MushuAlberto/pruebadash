@@ -2,6 +2,52 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import re
+
+def normalizar_nombres_empresas(df, empresa_col):
+    """
+    Normaliza y agrupa nombres de empresas similares
+    """
+    # Diccionario de agrupaciones específicas
+    agrupaciones = {
+        'M&Q SPA': ['M&Q SPA', 'M & Q', 'M & Q SPA', 'MINING AND QUARRYING SPA'],
+        'M S & D SPA': ['M S & D SPA', 'M S & D', 'MINING SERVICES AND DERIVATES SPA', 
+                        'MINING SERVICES AND DERIVATES', 'MS&D SPA'],
+        'JORQUERA TRANSPORTE S. A.': ['JORQUERA TRANSPORTE S. A.', 'JORQUERA TRANSPORTE S A'],
+        'COSEDUCAM S A': ['COSEDUCAM S A', 'COSEDUCAM'],
+        'AG SERVICES SPA': ['AG SERVICES SPA'],
+        'ARTISA': ['ARTISA']
+    }
+
+    # Crear un mapeo de normalización
+    mapeo_normalizacion = {}
+    for nombre_principal, variantes in agrupaciones.items():
+        for variante in variantes:
+            mapeo_normalizacion[variante.upper().strip()] = nombre_principal
+
+    # Función para normalizar un nombre individual
+    def normalizar_nombre(nombre):
+        if pd.isna(nombre):
+            return nombre
+
+        nombre_limpio = str(nombre).upper().strip()
+
+        # Buscar coincidencia exacta primero
+        if nombre_limpio in mapeo_normalizacion:
+            return mapeo_normalizacion[nombre_limpio]
+
+        # Buscar coincidencias parciales para casos no definidos
+        for nombre_normalizado, variantes in agrupaciones.items():
+            for variante in variantes:
+                if variante.upper() in nombre_limpio or nombre_limpio in variante.upper():
+                    return nombre_normalizado
+
+        # Si no encuentra coincidencia, devolver el nombre original
+        return nombre
+
+    # Aplicar normalización
+    df[empresa_col + '_normalizada'] = df[empresa_col].apply(normalizar_nombre)
+    return df
 
 def detectar_columna_fecha(df):
     date_cols = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
@@ -68,16 +114,31 @@ def main():
             # Detectar columna de empresa
             empresa_col = detectar_columna_empresa(filtered_df)
             if empresa_col:
+                # Normalizar nombres de empresas
+                filtered_df = normalizar_nombres_empresas(filtered_df, empresa_col)
+                empresa_col_normalizada = empresa_col + '_normalizada'
+
                 st.markdown("---")
                 st.header("🏢 Selecciona una o varias empresas")
-                empresas = filtered_df[empresa_col].dropna().unique().tolist()
+
+                # Mostrar mapeo de normalización
+                with st.expander("Ver agrupaciones de empresas"):
+                    st.write("**Empresas agrupadas automáticamente:**")
+                    mapeo_empresas = filtered_df.groupby(empresa_col_normalizada)[empresa_col].unique().to_dict()
+                    for empresa_normalizada, variantes in mapeo_empresas.items():
+                        if len(variantes) > 1:
+                            st.write(f"• **{empresa_normalizada}**: {', '.join(variantes)}")
+                        else:
+                            st.write(f"• **{empresa_normalizada}**: {variantes[0]}")
+
+                empresas = filtered_df[empresa_col_normalizada].dropna().unique().tolist()
                 empresas_seleccionadas = st.multiselect(
-                    "Empresas",
+                    "Empresas (nombres normalizados)",
                     options=empresas,
                     default=empresas,
                     key="empresas_multiselect"
                 )
-                filtered_df = filtered_df[filtered_df[empresa_col].isin(empresas_seleccionadas)]
+                filtered_df = filtered_df[filtered_df[empresa_col_normalizada].isin(empresas_seleccionadas)]
                 if filtered_df.empty:
                     st.warning("No hay datos para la(s) empresa(s) seleccionada(s).")
                     return
@@ -253,7 +314,7 @@ def main():
         st.markdown("### 📋 Formato de datos esperado")
         example_data = {
             'Fecha': ['2024-01-01', '2024-01-02', '2024-01-03'],
-            'Empresa': ['Empresa A', 'Empresa B', 'Empresa A'],
+            'Empresa': ['M&Q SPA', 'M & Q', 'JORQUERA TRANSPORTE S. A.'],
             'Ventas': [1000, 1500, 1200],
             'Producto': ['A', 'B', 'A'],
             'Region': ['Norte', 'Sur', 'Norte']
