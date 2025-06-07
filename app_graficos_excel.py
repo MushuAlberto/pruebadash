@@ -52,7 +52,26 @@ def detectar_columna_empresa(df):
 
 def main():
     st.set_page_config(page_title="Dashboard por Fecha y Empresa", layout="wide")
-    st.title("📊 Dashboard Dinámico por Fecha y Empresa")
+    # Banner imagen a todo el ancho
+    st.markdown(
+        """
+        <div style='width: 100vw; margin-left: -3.5vw; margin-top: -3.5vw;'>
+            <img src='assets/banner.png' style='width: 100%; height: auto; display: block;'>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    # Título y subtítulo centrados
+    st.markdown(
+        """
+        <div style='text-align: center; margin-top: 10px; margin-bottom: 10px;'>
+            <h2>Informe Operacional - Transporte Terrestre SdA</h2>
+            <h3>Productos Terminados e Intermedios</h3>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.markdown("Carga tu archivo Excel, elige una fecha y una o varias empresas para ver los dashboards filtrados.")
 
     st.sidebar.header("📁 Cargar Datos")
@@ -122,21 +141,7 @@ def main():
             else:
                 st.info("No se detectó ninguna columna de empresa. Se mostrarán todos los datos.")
 
-            # ----------- BANNER ENCABEZADO -----------
-            logo_path = "assets/banner.png"  # Aquí va la ruta de tu imagen
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                st.image(logo_path, width=200)
-            with col2:
-                st.markdown(
-                    """
-                    <div style='text-align: center;'>
-                        <h2>Informe Operacional - Transporte Terrestre SdA</h2>
-                        <h3>Productos Terminados e Intermedios</h3>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+            # Fecha seleccionada
             st.markdown(f"**Fecha :**  {selected_date.strftime('%A, %d de %B de %Y')}", unsafe_allow_html=True)
 
             # Indicador de Tiempo Operacional (columna E)
@@ -150,7 +155,7 @@ def main():
                 tiempo_str = "N/A"
             st.markdown(
                 f"""
-                <div style='background-color:#e6f4ea; border:1px solid #4caf50; border-radius:5px; padding:10px; text-align:center; width:300px;'>
+                <div style='background-color:#e6f4ea; border:1px solid #4caf50; border-radius:5px; padding:10px; text-align:center; width:300px; margin:auto;'>
                     <b>Tiempo Operacional</b><br>
                     <span style='color:red; font-size:1.5em;'><b>{tiempo_str}</b></span>
                 </div>
@@ -158,7 +163,6 @@ def main():
                 unsafe_allow_html=True
             )
             st.markdown("---")
-            # ----------- FIN BANNER ENCABEZADO -----------
 
             # Solo mostrar dashboards si hay datos filtrados
             if not filtered_df.empty:
