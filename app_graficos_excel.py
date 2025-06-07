@@ -32,10 +32,12 @@ if uploaded_file is not None:
         max_value=fechas_disponibles[-1]
     )
 
-    if st.button("Siguiente ➡️"):
-        st.session_state.show_dashboard = True
+# El botón SIEMPRE se muestra, incluso antes de subir el archivo
+if st.button("Siguiente ➡️"):
+    st.session_state.show_dashboard = True
 
-    if st.session_state.show_dashboard:
+if st.session_state.show_dashboard:
+    if uploaded_file is not None:
         # --- FILTRADO DE DATOS ---
         df_hoy = df[df['FECHA_DATE'] == selected_date]
         fecha_ayer = selected_date - timedelta(days=1)
@@ -124,6 +126,5 @@ if uploaded_file is not None:
             st.plotly_chart(fig_slit, use_container_width=True)
         else:
             st.info('No hay movimientos de SLIT para la fecha seleccionada.')
-
-else:
-    st.info("Por favor, sube un archivo Excel para comenzar.")
+    else:
+        st.info("Por favor, sube un archivo Excel para comenzar.")
