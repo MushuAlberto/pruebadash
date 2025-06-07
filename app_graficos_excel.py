@@ -164,6 +164,27 @@ def main():
             )
             st.markdown("---")
 
+            # --- GRAFICOS AUTOMATICOS POR EMPRESA: Producto vs Tonelaje ---
+            col_tonelaje = "Tonelaje"  # Cambia esto si tu columna tiene otro nombre
+            col_producto = "Producto"  # Cambia esto si tu columna tiene otro nombre
+
+            if col_tonelaje in filtered_df.columns and col_producto in filtered_df.columns and empresa_col:
+                st.markdown("## Gráficos Producto vs Tonelaje por Empresa")
+                for empresa in empresas_seleccionadas:
+                    df_empresa = filtered_df[filtered_df[empresa_col_normalizada] == empresa]
+                    if not df_empresa.empty:
+                        st.markdown(f"### {empresa}")
+                        fig = px.bar(
+                            df_empresa,
+                            x=col_producto,
+                            y=col_tonelaje,
+                            title=f"{empresa}: Producto vs Tonelaje",
+                            labels={col_producto: "Producto", col_tonelaje: "Tonelaje"}
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No se encontraron las columnas 'Producto' y/o 'Tonelaje' en los datos.")
+
             # Solo mostrar dashboards si hay datos filtrados
             if not filtered_df.empty:
                 numeric_columns = filtered_df.select_dtypes(include=['number']).columns.tolist()
@@ -333,7 +354,7 @@ def main():
             'Fecha': ['2024-01-01', '2024-01-02', '2024-01-03'],
             'Empresa': ['M&Q SPA', 'M & Q', 'JORQUERA TRANSPORTE S. A.'],
             'Tiempo Operacional': [138, 120, 90],  # minutos
-            'Ventas': [1000, 1500, 1200],
+            'Tonelaje': [100, 150, 120],
             'Producto': ['A', 'B', 'A'],
             'Region': ['Norte', 'Sur', 'Norte']
         }
