@@ -147,12 +147,16 @@ if uploaded_file is not None:
                 df_empresa = filtered_df[filtered_df[empresa_col_normalizada] == empresa]
                 if not df_empresa.empty:
                     st.markdown(f"### {empresa}")
+                    # Ordenar por PRODUCTO y convertir a string
+                    df_empresa = df_empresa.sort_values(by=col_producto)
+                    df_empresa[col_producto] = df_empresa[col_producto].astype(str)
                     fig = px.line(
                         df_empresa,
                         x=col_producto,
                         y=col_tonelaje,
                         color=col_destino,
                         markers=True,
+                        line_shape="linear",
                         title=f"{empresa}: PRODUCTO vs TONELAJE (línea, color por DESTINO)",
                         labels={col_producto: "Producto", col_tonelaje: "Tonelaje", col_destino: "Destino"}
                     )
