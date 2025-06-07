@@ -27,6 +27,27 @@ def main():
             st.sidebar.success(f"✅ Archivo cargado: {uploaded_file.name}")
             st.sidebar.info(f"Filas: {len(df)} | Columnas: {len(df.columns)}")
 
+            # Detectar columnas de tipo fecha
+            date_columns = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
+            if not date_columns:
+                # Intentar convertir columnas con nombre típico a fecha
+                for col in df.columns:
+                    if 'fecha' in col.lower() or 'date' in col.lower():
+                        try:
+                            df[col] = pd.to_datetime(df[col])
+                            date_columns.append(col)
+                        except Exception:
+                            pass
+            # Si hay columnas de fecha, mostrar selector
+            if date_columns:
+                st.sidebar.markdown("### Filtro por fecha")
+                date_col = st.sidebar.selectbox("Selecciona la columna de fecha", date_columns)
+                min_date = df[date_col].min().date()
+                max_date = df[date_col].max().date()
+                selected_date = st.sidebar.date_input("Selecciona la fecha", min_value=min_date, max_value=max_date, value=min_date)
+                # Filtrar el DataFrame por la fecha seleccionada
+                df = df[df[date_col].dt.date == selected_date]
+
             # Mostrar vista previa de los datos
             with st.expander("👀 Vista previa de los datos", expanded=True):
                 st.dataframe(df.head(10), use_container_width=True)
