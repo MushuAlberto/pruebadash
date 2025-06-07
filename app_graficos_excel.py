@@ -105,7 +105,7 @@ def main():
                         [None] + categorical_columns,
                         key="line_bar_color"
                     )
-                    title = st.text_input("Título del gráfico", f"{chart_type}: {y_axis} por {x_axis}")
+                    title = st.text_input("Título del gráfico", f"{chart_type}: {y_axis} por {x_axis}", key="line_bar_title")
 
                 if st.button("Generar gráfico", key="generate_line_bar"):
                     if chart_type == "Barras":
@@ -127,8 +127,8 @@ def main():
                     pie_names = st.selectbox("Etiquetas", categorical_columns, key="pie_names")
 
                 with col2:
-                    pie_title = st.text_input("Título", f"Distribución de {pie_values}")
-                    show_percentages = st.checkbox("Mostrar porcentajes", True)
+                    pie_title = st.text_input("Título", f"Distribución de {pie_values}", key="pie_title")
+                    show_percentages = st.checkbox("Mostrar porcentajes", True, key="pie_percentages")
 
                 if st.button("Generar gráfico circular", key="generate_pie"):
                     # Agrupar datos si es necesario
@@ -167,7 +167,7 @@ def main():
                         key="scatter_size"
                     )
 
-                scatter_title = st.text_input("Título", f"Dispersión: {scatter_y} vs {scatter_x}")
+                scatter_title = st.text_input("Título", f"Dispersión: {scatter_y} vs {scatter_x}", key="scatter_title")
 
                 if st.button("Generar dispersión", key="generate_scatter"):
                     fig = px.scatter(
@@ -189,7 +189,7 @@ def main():
 
                 with col1:
                     hist_column = st.selectbox("Columna", numeric_columns, key="hist_column")
-                    bins = st.slider("Número de bins", 10, 100, 30)
+                    bins = st.slider("Número de bins", 10, 100, 30, key="hist_bins")
 
                 with col2:
                     hist_color_by = st.selectbox(
@@ -198,7 +198,7 @@ def main():
                         key="hist_color"
                     )
 
-                hist_title = st.text_input("Título", f"Distribución de {hist_column}")
+                hist_title = st.text_input("Título", f"Distribución de {hist_column}", key="hist_title")
 
                 if st.button("Generar histograma", key="generate_hist"):
                     fig = px.histogram(
@@ -219,7 +219,8 @@ def main():
                     selected_columns = st.multiselect(
                         "Selecciona columnas numéricas",
                         numeric_columns,
-                        default=numeric_columns[:5] if len(numeric_columns) >= 5 else numeric_columns
+                        default=numeric_columns[:5] if len(numeric_columns) >= 5 else numeric_columns,
+                        key="heatmap_columns"
                     )
 
                     if len(selected_columns) >= 2:
@@ -244,16 +245,16 @@ def main():
             st.markdown("---")
             st.header("📈 Estadísticas Descriptivas")
 
-            if st.checkbox("Mostrar estadísticas"):
+            if st.checkbox("Mostrar estadísticas", key="show_stats"):
                 st.subheader("Estadísticas de columnas numéricas")
                 st.dataframe(filtered_df.describe(), use_container_width=True)
 
                 if categorical_columns:
                     st.subheader("Información de columnas categóricas")
-                    for col in categorical_columns[:3]:  # Mostrar solo las primeras 3
+                    for idx, col in enumerate(categorical_columns[:3]):  # Mostrar solo las primeras 3
                         st.write(f"**{col}:**")
                         value_counts = filtered_df[col].value_counts().head(10)
-                        st.bar_chart(value_counts)
+                        st.bar_chart(value_counts, key=f"bar_chart_{idx}")
 
         except Exception as e:
             st.error(f"Error al procesar el archivo: {str(e)}")
