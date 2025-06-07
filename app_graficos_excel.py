@@ -30,25 +30,6 @@ def normalizar_nombres_empresas(df, empresa_col):
     df[empresa_col + '_normalizada'] = df[empresa_col].apply(normalizar_nombre)
     return df
 
-def detectar_columna_fecha(df):
-    date_cols = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
-    if not date_cols:
-        for col in df.columns:
-            if any(word in col.lower() for word in ['fecha', 'date', 'día', 'dia']):
-                try:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
-                    if df[col].notnull().sum() > 0:
-                        date_cols.append(col)
-                except Exception:
-                    pass
-    return date_cols
-
-def detectar_columna_empresa(df):
-    for col in df.columns:
-        if any(word in col.lower() for word in ['empresa', 'compañía', 'compania', 'company', 'sociedad']):
-            return col
-    return None
-
 st.set_page_config(page_title="Dashboard por Fecha y Empresa", layout="wide")
 st.markdown(
     """
@@ -68,7 +49,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-st.markdown("Carga tu archivo Excel, selecciona la fecha y automáticamente verás los gráficos de Producto vs Tonelaje por empresa.")
+st.markdown("Carga tu archivo Excel, selecciona la fecha y automáticamente verás los gráficos de PRODUCTO vs TONELAJE por EMPRESA.")
 
 st.sidebar.header("📁 Cargar Datos")
 uploaded_file = st.sidebar.file_uploader(
@@ -79,51 +60,58 @@ uploaded_file = st.sidebar.file_uploader(
 
 if uploaded_file is not None:
     try:
-        df = pd.read_excel(uploaded_file)
+        df = pd.read_excel(uploaded_file, dtype=str)
+        # Asegurarse de que los nombres de columna estén limpios
+        df.columns = [col.strip().upper() for col in df.columns]
+
+        # Convertir FECHA a datetime
+        if 'FECHA' in df.columns:
+            df['FECHA'] = pd.to_datetime(df['FECHA'], errors='coerce')
+        else:
+            st.error("No se encontró la columna 'FECHA' en el archivo.")
+            st.stop()
+
+        # Convertir TONELAJE a numérico
+        if 'TONELAJE' in df.columns:
+            df['TONELAJE'] = pd.to_numeric(df['TONELAJE'], errors='coerce')
+        else:
+            st.error("No se encontró la columna 'TONELAJE' en el archivo.")
+            st.stop()
+
+        # Normalizar nombres de empresa
+        if 'EMPRESA' in df.columns:
+            df = normalizar_nombres_empresas(df, 'EMPRESA')
+            empresa_col_normalizada = 'EMPRESA_normalizada'
+        else:
+            st.error("No se encontró la columna 'EMPRESA' en el archivo.")
+            st.stop()
+
         st.write("Vista previa de los datos:")
         st.dataframe(df.head(10), use_container_width=True)
 
-        # Detectar columna de fecha
-        date_columns = detectar_columna_fecha(df)
-
-        if date_columns:
-            st.markdown("---")
-            st.header("📅 Selecciona una fecha para filtrar los datos")
-            date_col = st.selectbox("Columna de fecha", date_columns, key="main_date_col")
-            df = df[df[date_col].notnull()]
-            min_date = df[date_col].min().date()
-            max_date = df[date_col].max().date()
-            selected_date = st.date_input(
-                "Selecciona la fecha",
-                min_value=min_date,
-                max_value=max_date,
-                value=min_date,
-                key="main_date_input"
-            )
-            filtered_df = df[df[date_col].dt.date == selected_date]
-            if filtered_df.empty:
-                st.warning("No hay datos para la fecha seleccionada. Por favor, elige otra fecha.")
-                st.stop()
-        else:
-            st.info("No se detectó ninguna columna de fecha. Se mostrarán todos los datos.")
-            filtered_df = df.copy()
-
-        # Detectar columna de empresa
-        empresa_col = detectar_columna_empresa(filtered_df)
-        if empresa_col:
-            filtered_df = normalizar_nombres_empresas(filtered_df, empresa_col)
-            empresa_col_normalizada = empresa_col + '_normalizada'
-        else:
-            st.info("No se detectó ninguna columna de empresa. No se pueden generar los gráficos por empresa.")
+        # Selección de fecha
+        st.markdown("---")
+        st.header("📅 Selecciona una fecha para filtrar los datos")
+        min_date = df['FECHA'].min().date()
+        max_date = df['FECHA'].max().date()
+        selected_date = st.date_input(
+            "Selecciona la fecha",
+            min_value=min_date,
+            max_value=max_date,
+            value=min_date,
+            key="main_date_input"
+        )
+        filtered_df = df[df['FECHA'].dt.date == selected_date]
+        if filtered_df.empty:
+            st.warning("No hay datos para la fecha seleccionada. Por favor, elige otra fecha.")
             st.stop()
 
-        # Indicador de Tiempo Operacional (columna E)
-        col_tiempo = "Tiempo Operacional"  # Cambia esto si tu columna tiene otro nombre
-        if col_tiempo in filtered_df.columns:
-            tiempo_operacional = filtered_df[col_tiempo].mean()
-            horas = int(tiempo_operacional) // 60
-            minutos = int(tiempo_operacional) % 60
-            tiempo_str = f"{horas}:{minutos:02d}"
+        # Indicador de Tiempo Operacional (si existe)
+        if 'TIEMPO OPERACIONAL' in filtered_df.columns:
+            tiempo_operacional = pd.to_numeric(filtered_df['TIEMPO OPERACIONAL'], errors='coerce').mean()
+            horas = int(tiempo_operacional) // 60 if pd.notnull(tiempo_operacional) else 0
+            minutos = int(tiempo_operacional) % 60 if pd.notnull(tiempo_operacional) else 0
+            tiempo_str = f"{horas}:{minutos:02d}" if pd.notnull(tiempo_operacional) else "N/A"
         else:
             tiempo_str = "N/A"
         st.markdown(
@@ -137,41 +125,38 @@ if uploaded_file is not None:
         )
         st.markdown("---")
 
-        # --- GRAFICOS AUTOMATICOS POR EMPRESA: Producto vs Tonelaje ---
-        col_tonelaje = "Tonelaje"  # Cambia esto si tu columna tiene otro nombre
-        col_producto = "Producto"  # Cambia esto si tu columna tiene otro nombre
-
-        if col_tonelaje in filtered_df.columns and col_producto in filtered_df.columns:
-            st.markdown("## Gráficos Producto vs Tonelaje por Empresa")
-            empresas = filtered_df[empresa_col_normalizada].dropna().unique().tolist()
+        # Gráficos automáticos por empresa
+        st.markdown("## Gráficos PRODUCTO vs TONELAJE por EMPRESA")
+        empresas = filtered_df[empresa_col_normalizada].dropna().unique().tolist()
+        if not empresas:
+            st.info("No hay empresas para la fecha seleccionada.")
+        else:
             for empresa in empresas:
                 df_empresa = filtered_df[filtered_df[empresa_col_normalizada] == empresa]
                 if not df_empresa.empty:
                     st.markdown(f"### {empresa}")
                     fig = px.bar(
                         df_empresa,
-                        x=col_producto,
-                        y=col_tonelaje,
-                        title=f"{empresa}: Producto vs Tonelaje",
-                        labels={col_producto: "Producto", col_tonelaje: "Tonelaje"}
+                        x='PRODUCTO',
+                        y='TONELAJE',
+                        title=f"{empresa}: PRODUCTO vs TONELAJE",
+                        labels={'PRODUCTO': "Producto", 'TONELAJE': "Tonelaje"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No se encontraron las columnas 'Producto' y/o 'Tonelaje' en los datos.")
 
     except Exception as e:
         st.error(f"Error al procesar el archivo: {str(e)}")
-        st.info("Asegúrate de que el archivo sea un Excel válido (.xlsx o .xls)")
+        st.info("Asegúrate de que el archivo sea un Excel válido (.xlsx o .xls) y que las columnas tengan los nombres correctos.")
 
 else:
     st.info("👆 Carga un archivo Excel desde la barra lateral para comenzar")
     st.markdown("### 📋 Formato de datos esperado")
     example_data = {
-        'Fecha': ['2024-01-01', '2024-01-02', '2024-01-03'],
-        'Empresa': ['M&Q SPA', 'M & Q', 'JORQUERA TRANSPORTE S. A.'],
-        'Tiempo Operacional': [138, 120, 90],  # minutos
-        'Tonelaje': [100, 150, 120],
-        'Producto': ['A', 'B', 'A'],
-        'Region': ['Norte', 'Sur', 'Norte']
+        'FECHA': ['2024-01-01', '2024-01-02', '2024-01-03'],
+        'PRODUCTO': ['A', 'B', 'A'],
+        'DESTINO': ['X', 'Y', 'Z'],
+        'TONELAJE': [100, 150, 120],
+        'EMPRESA': ['M&Q SPA', 'M & Q', 'JORQUERA TRANSPORTE S. A.'],
+        'TIEMPO OPERACIONAL': [138, 120, 90]
     }
     st.dataframe(pd.DataFrame(example_data))
