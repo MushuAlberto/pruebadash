@@ -52,21 +52,21 @@ def detectar_columna_empresa(df):
 
 def main():
     st.set_page_config(page_title="Dashboard por Fecha y Empresa", layout="wide")
-    # Banner imagen a todo el ancho
+    # Banner imagen a todo el ancho (sin títulos debajo)
     st.markdown(
         """
-        <div style='width: 100vw; margin-left: -3.5vw; margin-top: -3.5vw;'>
+        <style>
+        .banner-container {
+            width: 100vw;
+            margin-left: -8vw;
+            margin-top: -3.5vw;
+        }
+        @media (max-width: 900px) {
+            .banner-container { margin-left: -4vw; }
+        }
+        </style>
+        <div class='banner-container'>
             <img src='assets/banner.png' style='width: 100%; height: auto; display: block;'>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    # Título y subtítulo centrados
-    st.markdown(
-        """
-        <div style='text-align: center; margin-top: 10px; margin-bottom: 10px;'>
-            <h2>Informe Operacional - Transporte Terrestre SdA</h2>
-            <h3>Productos Terminados e Intermedios</h3>
         </div>
         """,
         unsafe_allow_html=True
