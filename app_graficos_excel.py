@@ -62,7 +62,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-st.markdown("Carga tu archivo Excel, selecciona la fecha y automáticamente verás los gráficos de PRODUCTO vs TONELAJE por EMPRESA DE TRANSPORTE, con cada DESTINO identificado por color.")
+st.markdown("Carga tu archivo Excel, selecciona la fecha y automáticamente verás los gráficos de líneas de PRODUCTO vs TONELAJE por EMPRESA DE TRANSPORTE, con cada DESTINO identificado por color.")
 
 st.sidebar.header("📁 Cargar Datos")
 uploaded_file = st.sidebar.file_uploader(
@@ -137,8 +137,8 @@ if uploaded_file is not None:
         )
         st.markdown("---")
 
-        # Gráficos automáticos por empresa, coloreando por DESTINO
-        st.markdown("## Gráficos PRODUCTO vs TONELAJE por EMPRESA DE TRANSPORTE (coloreado por DESTINO)")
+        # Gráficos automáticos por empresa, tipo línea, coloreando por DESTINO
+        st.markdown("## Gráficos de líneas: PRODUCTO vs TONELAJE por EMPRESA DE TRANSPORTE (coloreado por DESTINO)")
         empresas = filtered_df[empresa_col_normalizada].dropna().unique().tolist()
         if not empresas:
             st.info("No hay empresas para la fecha seleccionada.")
@@ -147,12 +147,13 @@ if uploaded_file is not None:
                 df_empresa = filtered_df[filtered_df[empresa_col_normalizada] == empresa]
                 if not df_empresa.empty:
                     st.markdown(f"### {empresa}")
-                    fig = px.bar(
+                    fig = px.line(
                         df_empresa,
                         x=col_producto,
                         y=col_tonelaje,
                         color=col_destino,
-                        title=f"{empresa}: PRODUCTO vs TONELAJE (coloreado por DESTINO)",
+                        markers=True,
+                        title=f"{empresa}: PRODUCTO vs TONELAJE (línea, color por DESTINO)",
                         labels={col_producto: "Producto", col_tonelaje: "Tonelaje", col_destino: "Destino"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
