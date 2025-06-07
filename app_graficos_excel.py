@@ -38,15 +38,6 @@ def main():
                             date_columns.append(col)
                         except Exception:
                             pass
-            # Si hay columnas de fecha, mostrar selector
-            if date_columns:
-                st.sidebar.markdown("### Filtro por fecha")
-                date_col = st.sidebar.selectbox("Selecciona la columna de fecha", date_columns)
-                min_date = df[date_col].min().date()
-                max_date = df[date_col].max().date()
-                selected_date = st.sidebar.date_input("Selecciona la fecha", min_value=min_date, max_value=max_date, value=min_date)
-                # Filtrar el DataFrame por la fecha seleccionada
-                df = df[df[date_col].dt.date == selected_date]
 
             # Mostrar vista previa de los datos
             with st.expander("👀 Vista previa de los datos", expanded=True):
@@ -61,14 +52,29 @@ def main():
             with col3:
                 st.metric("Valores nulos", df.isnull().sum().sum())
 
+            # Si hay columnas de fecha, mostrar selector en la página principal
+            if date_columns:
+                st.markdown("---")
+                st.header("📅 Selecciona una fecha para filtrar los datos")
+                date_col = st.selectbox("Columna de fecha", date_columns, key="main_date_col")
+                min_date = df[date_col].min().date()
+                max_date = df[date_col].max().date()
+                selected_date = st.date_input("Selecciona la fecha", min_value=min_date, max_value=max_date, value=min_date, key="main_date_input")
+                # Filtrar el DataFrame por la fecha seleccionada
+                filtered_df = df[df[date_col].dt.date == selected_date]
+                if filtered_df.empty:
+                    st.warning("No hay datos para la fecha seleccionada. Por favor, elige otra fecha.")
+                    return
+            else:
+                filtered_df = df.copy()
+                selected_date = None
+
             # Separar columnas numéricas y categóricas
-            numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
-            categorical_columns = df.select_dtypes(include=['object', 'category']).columns.tolist()
-            all_columns = df.columns.tolist()
+            numeric_columns = filtered_df.select_dtypes(include=['number']).columns.tolist()
+            categorical_columns = filtered_df.select_dtypes(include=['object', 'category']).columns.tolist()
+            all_columns = filtered_df.columns.tolist()
 
             st.markdown("---")
-
-            # Sección de creación de gráficos
             st.header("🎨 Crear Gráficos")
 
             # Tabs para diferentes tipos de gráficos
@@ -103,11 +109,11 @@ def main():
 
                 if st.button("Generar gráfico", key="generate_line_bar"):
                     if chart_type == "Barras":
-                        fig = px.bar(df, x=x_axis, y=y_axis, color=color_by, title=title)
+                        fig = px.bar(filtered_df, x=x_axis, y=y_axis, color=color_by, title=title)
                     elif chart_type == "Líneas":
-                        fig = px.line(df, x=x_axis, y=y_axis, color=color_by, title=title)
+                        fig = px.line(filtered_df, x=x_axis, y=y_axis, color=color_by, title=title)
                     else:  # Barras horizontales
-                        fig = px.bar(df, x=y_axis, y=x_axis, color=color_by, title=title, orientation='h')
+                        fig = px.bar(filtered_df, x=y_axis, y=x_axis, color=color_by, title=title, orientation='h')
 
                     fig.update_layout(height=500)
                     st.plotly_chart(fig, use_container_width=True)
@@ -126,7 +132,7 @@ def main():
 
                 if st.button("Generar gráfico circular", key="generate_pie"):
                     # Agrupar datos si es necesario
-                    pie_data = df.groupby(pie_names)[pie_values].sum().reset_index()
+                    pie_data = filtered_df.groupby(pie_names)[pie_values].sum().reset_index()
 
                     fig = px.pie(
                         pie_data, 
@@ -165,13 +171,13 @@ def main():
 
                 if st.button("Generar dispersión", key="generate_scatter"):
                     fig = px.scatter(
-                        df, 
+                        filtered_df, 
                         x=scatter_x, 
                         y=scatter_y, 
                         color=scatter_color,
                         size=scatter_size,
                         title=scatter_title,
-                        hover_data=df.columns[:5].tolist()  # Mostrar primeras 5 columnas en hover
+                        hover_data=filtered_df.columns[:5].tolist()  # Mostrar primeras 5 columnas en hover
                     )
 
                     fig.update_layout(height=500)
@@ -196,7 +202,7 @@ def main():
 
                 if st.button("Generar histograma", key="generate_hist"):
                     fig = px.histogram(
-                        df, 
+                        filtered_df, 
                         x=hist_column, 
                         color=hist_color_by,
                         nbins=bins,
@@ -218,7 +224,7 @@ def main():
 
                     if len(selected_columns) >= 2:
                         if st.button("Generar mapa de calor", key="generate_heatmap"):
-                            correlation_matrix = df[selected_columns].corr()
+                            correlation_matrix = filtered_df[selected_columns].corr()
 
                             fig = px.imshow(
                                 correlation_matrix,
@@ -240,13 +246,13 @@ def main():
 
             if st.checkbox("Mostrar estadísticas"):
                 st.subheader("Estadísticas de columnas numéricas")
-                st.dataframe(df.describe(), use_container_width=True)
+                st.dataframe(filtered_df.describe(), use_container_width=True)
 
                 if categorical_columns:
                     st.subheader("Información de columnas categóricas")
                     for col in categorical_columns[:3]:  # Mostrar solo las primeras 3
                         st.write(f"**{col}:**")
-                        value_counts = df[col].value_counts().head(10)
+                        value_counts = filtered_df[col].value_counts().head(10)
                         st.bar_chart(value_counts)
 
         except Exception as e:
