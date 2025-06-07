@@ -1,14 +1,9 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import re
+from datetime import datetime
 
 def normalizar_nombres_empresas(df, empresa_col):
-    """
-    Normaliza y agrupa nombres de empresas similares
-    """
-    # Diccionario de agrupaciones específicas
     agrupaciones = {
         'M&Q SPA': ['M&Q SPA', 'M & Q', 'M & Q SPA', 'MINING AND QUARRYING SPA'],
         'M S & D SPA': ['M S & D SPA', 'M S & D', 'MINING SERVICES AND DERIVATES SPA', 
@@ -18,34 +13,21 @@ def normalizar_nombres_empresas(df, empresa_col):
         'AG SERVICES SPA': ['AG SERVICES SPA'],
         'ARTISA': ['ARTISA']
     }
-
-    # Crear un mapeo de normalización
     mapeo_normalizacion = {}
     for nombre_principal, variantes in agrupaciones.items():
         for variante in variantes:
             mapeo_normalizacion[variante.upper().strip()] = nombre_principal
-
-    # Función para normalizar un nombre individual
     def normalizar_nombre(nombre):
         if pd.isna(nombre):
             return nombre
-
         nombre_limpio = str(nombre).upper().strip()
-
-        # Buscar coincidencia exacta primero
         if nombre_limpio in mapeo_normalizacion:
             return mapeo_normalizacion[nombre_limpio]
-
-        # Buscar coincidencias parciales para casos no definidos
         for nombre_normalizado, variantes in agrupaciones.items():
             for variante in variantes:
                 if variante.upper() in nombre_limpio or nombre_limpio in variante.upper():
                     return nombre_normalizado
-
-        # Si no encuentra coincidencia, devolver el nombre original
         return nombre
-
-    # Aplicar normalización
     df[empresa_col + '_normalizada'] = df[empresa_col].apply(normalizar_nombre)
     return df
 
@@ -114,14 +96,10 @@ def main():
             # Detectar columna de empresa
             empresa_col = detectar_columna_empresa(filtered_df)
             if empresa_col:
-                # Normalizar nombres de empresas
                 filtered_df = normalizar_nombres_empresas(filtered_df, empresa_col)
                 empresa_col_normalizada = empresa_col + '_normalizada'
-
                 st.markdown("---")
                 st.header("🏢 Selecciona una o varias empresas")
-
-                # Mostrar mapeo de normalización
                 with st.expander("Ver agrupaciones de empresas"):
                     st.write("**Empresas agrupadas automáticamente:**")
                     mapeo_empresas = filtered_df.groupby(empresa_col_normalizada)[empresa_col].unique().to_dict()
@@ -130,7 +108,6 @@ def main():
                             st.write(f"• **{empresa_normalizada}**: {', '.join(variantes)}")
                         else:
                             st.write(f"• **{empresa_normalizada}**: {variantes[0]}")
-
                 empresas = filtered_df[empresa_col_normalizada].dropna().unique().tolist()
                 empresas_seleccionadas = st.multiselect(
                     "Empresas (nombres normalizados)",
@@ -145,15 +122,52 @@ def main():
             else:
                 st.info("No se detectó ninguna columna de empresa. Se mostrarán todos los datos.")
 
+            # ----------- BANNER ENCABEZADO -----------
+            # Cambia la ruta si tu imagen está en otra carpeta
+            logo_path = "banner.png"  # O "assets/banner.png" si la subes a una carpeta assets/
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.image(logo_path, width=200)
+            with col2:
+                st.markdown(
+                    """
+                    <div style='text-align: center;'>
+                        <h2>Informe Operacional - Transporte Terrestre SdA</h2>
+                        <h3>Productos Terminados e Intermedios</h3>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            st.markdown(f"**Fecha :**  {selected_date.strftime('%A, %d de %B de %Y')}", unsafe_allow_html=True)
+
+            # Indicador de Tiempo Operacional (columna E)
+            col_tiempo = "Tiempo Operacional"  # Cambia esto si tu columna tiene otro nombre
+            if col_tiempo in filtered_df.columns:
+                tiempo_operacional = filtered_df[col_tiempo].mean()
+                horas = int(tiempo_operacional) // 60
+                minutos = int(tiempo_operacional) % 60
+                tiempo_str = f"{horas}:{minutos:02d}"
+            else:
+                tiempo_str = "N/A"
+            st.markdown(
+                f"""
+                <div style='background-color:#e6f4ea; border:1px solid #4caf50; border-radius:5px; padding:10px; text-align:center; width:300px;'>
+                    <b>Tiempo Operacional</b><br>
+                    <span style='color:red; font-size:1.5em;'><b>{tiempo_str}</b></span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown("---")
+            # ----------- FIN BANNER ENCABEZADO -----------
+
             # Solo mostrar dashboards si hay datos filtrados
             if not filtered_df.empty:
                 numeric_columns = filtered_df.select_dtypes(include=['number']).columns.tolist()
                 categorical_columns = filtered_df.select_dtypes(include=['object', 'category']).columns.tolist()
                 all_columns = filtered_df.columns.tolist()
 
-                st.markdown("---")
                 st.header("🎨 Dashboards y Gráficos")
-
                 tab1, tab2, tab3, tab4, tab5 = st.tabs([
                     "📈 Líneas/Barras",
                     "🥧 Circular",
@@ -315,6 +329,7 @@ def main():
         example_data = {
             'Fecha': ['2024-01-01', '2024-01-02', '2024-01-03'],
             'Empresa': ['M&Q SPA', 'M & Q', 'JORQUERA TRANSPORTE S. A.'],
+            'Tiempo Operacional': [138, 120, 90],  # minutos
             'Ventas': [1000, 1500, 1200],
             'Producto': ['A', 'B', 'A'],
             'Region': ['Norte', 'Sur', 'Norte']
