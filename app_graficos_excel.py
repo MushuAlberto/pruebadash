@@ -2,6 +2,21 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+def detectar_columna_fecha(df):
+    # Buscar columnas que ya sean datetime
+    date_cols = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
+    # Si no hay, intentar convertir columnas con nombres típicos
+    if not date_cols:
+        for col in df.columns:
+            if any(word in col.lower() for word in ['fecha', 'date', 'día', 'dia']):
+                try:
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                    if df[col].notnull().sum() > 0:
+                        date_cols.append(col)
+                except Exception:
+                    pass
+    return date_cols
+
 def main():
     st.set_page_config(page_title="Dashboard por Fecha", layout="wide")
     st.title("📊 Dashboard Dinámico por Fecha")
@@ -17,27 +32,22 @@ def main():
     if uploaded_file is not None:
         try:
             df = pd.read_excel(uploaded_file)
-
-            # Detectar columnas de tipo fecha
-            date_columns = df.select_dtypes(include=['datetime', 'datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
-            if not date_columns:
-                for col in df.columns:
-                    if 'fecha' in col.lower() or 'date' in col.lower():
-                        try:
-                            df[col] = pd.to_datetime(df[col])
-                            date_columns.append(col)
-                        except Exception:
-                            pass
-
             st.write("Vista previa de los datos:")
             st.dataframe(df.head(10), use_container_width=True)
+
+            # Detectar columna de fecha
+            date_columns = detectar_columna_fecha(df)
 
             if date_columns:
                 st.markdown("---")
                 st.header("📅 Selecciona una fecha para filtrar los datos")
                 date_col = st.selectbox("Columna de fecha", date_columns, key="main_date_col")
+                # Eliminar filas con fecha nula
+                df = df[df[date_col].notnull()]
+                # Mostrar rango de fechas
                 min_date = df[date_col].min().date()
                 max_date = df[date_col].max().date()
+                # Selector de fecha
                 selected_date = st.date_input(
                     "Selecciona la fecha",
                     min_value=min_date,
@@ -45,6 +55,7 @@ def main():
                     value=min_date,
                     key="main_date_input"
                 )
+                # Filtrar el DataFrame por la fecha seleccionada
                 filtered_df = df[df[date_col].dt.date == selected_date]
                 if filtered_df.empty:
                     st.warning("No hay datos para la fecha seleccionada. Por favor, elige otra fecha.")
