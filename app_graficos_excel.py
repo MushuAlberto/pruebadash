@@ -1,13 +1,9 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 def main():
     st.set_page_config(page_title="Generador de Gráficos Excel", layout="wide")
-
     st.title("📊 Generador de Gráficos desde Excel")
     st.markdown("Carga tu archivo Excel y crea gráficos interactivos fácilmente")
 
@@ -59,7 +55,13 @@ def main():
                 date_col = st.selectbox("Columna de fecha", date_columns, key="main_date_col")
                 min_date = df[date_col].min().date()
                 max_date = df[date_col].max().date()
-                selected_date = st.date_input("Selecciona la fecha", min_value=min_date, max_value=max_date, value=min_date, key="main_date_input")
+                selected_date = st.date_input(
+                    "Selecciona la fecha",
+                    min_value=min_date,
+                    max_value=max_date,
+                    value=min_date,
+                    key="main_date_input"
+                )
                 # Filtrar el DataFrame por la fecha seleccionada
                 filtered_df = df[df[date_col].dt.date == selected_date]
                 if filtered_df.empty:
@@ -79,9 +81,9 @@ def main():
 
             # Tabs para diferentes tipos de gráficos
             tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                "📈 Líneas/Barras", 
-                "🥧 Circular", 
-                "📊 Dispersión", 
+                "📈 Líneas/Barras",
+                "🥧 Circular",
+                "📊 Dispersión",
                 "📉 Histograma",
                 "🔥 Mapa de Calor"
             ])
@@ -101,7 +103,7 @@ def main():
 
                 with col2:
                     color_by = st.selectbox(
-                        "Colorear por (opcional)", 
+                        "Colorear por (opcional)",
                         [None] + categorical_columns,
                         key="line_bar_color"
                     )
@@ -135,9 +137,9 @@ def main():
                     pie_data = filtered_df.groupby(pie_names)[pie_values].sum().reset_index()
 
                     fig = px.pie(
-                        pie_data, 
-                        values=pie_values, 
-                        names=pie_names, 
+                        pie_data,
+                        values=pie_values,
+                        names=pie_names,
                         title=pie_title
                     )
 
@@ -157,12 +159,12 @@ def main():
 
                 with col2:
                     scatter_color = st.selectbox(
-                        "Colorear por (opcional)", 
+                        "Colorear por (opcional)",
                         [None] + categorical_columns + numeric_columns,
                         key="scatter_color"
                     )
                     scatter_size = st.selectbox(
-                        "Tamaño por (opcional)", 
+                        "Tamaño por (opcional)",
                         [None] + numeric_columns,
                         key="scatter_size"
                     )
@@ -171,13 +173,13 @@ def main():
 
                 if st.button("Generar dispersión", key="generate_scatter"):
                     fig = px.scatter(
-                        filtered_df, 
-                        x=scatter_x, 
-                        y=scatter_y, 
+                        filtered_df,
+                        x=scatter_x,
+                        y=scatter_y,
                         color=scatter_color,
                         size=scatter_size,
                         title=scatter_title,
-                        hover_data=filtered_df.columns[:5].tolist()  # Mostrar primeras 5 columnas en hover
+                        hover_data=filtered_df.columns[:5].tolist()
                     )
 
                     fig.update_layout(height=500)
@@ -193,7 +195,7 @@ def main():
 
                 with col2:
                     hist_color_by = st.selectbox(
-                        "Separar por (opcional)", 
+                        "Separar por (opcional)",
                         [None] + categorical_columns,
                         key="hist_color"
                     )
@@ -202,8 +204,8 @@ def main():
 
                 if st.button("Generar histograma", key="generate_hist"):
                     fig = px.histogram(
-                        filtered_df, 
-                        x=hist_column, 
+                        filtered_df,
+                        x=hist_column,
                         color=hist_color_by,
                         nbins=bins,
                         title=hist_title
