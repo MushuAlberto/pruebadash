@@ -242,7 +242,7 @@ def main():
                         for idx, col in enumerate(categorical_columns[:3]):
                             st.write(f"**{col}:**")
                             value_counts = filtered_df[col].value_counts().head(10)
-                            st.bar_chart(value_counts, key=f"bar_chart_{idx}")
+                            st.bar_chart(value_counts)
 
         except Exception as e:
             st.error(f"Error al procesar el archivo: {str(e)}")
