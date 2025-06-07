@@ -123,8 +123,7 @@ def main():
                 st.info("No se detectó ninguna columna de empresa. Se mostrarán todos los datos.")
 
             # ----------- BANNER ENCABEZADO -----------
-            # Cambia la ruta si tu imagen está en otra carpeta
-            logo_path = "banner.png"  # O "assets/banner.png" si la subes a una carpeta assets/
+            logo_path = "assets/banner.png"  # Aquí va la ruta de tu imagen
             col1, col2 = st.columns([1, 3])
             with col1:
                 st.image(logo_path, width=200)
